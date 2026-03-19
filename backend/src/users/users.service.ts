@@ -8,13 +8,19 @@ import * as bcrypt from 'bcrypt';
 export class UsersService {
   constructor (private prisma: PrismaService) {};
   async create(createUserDto: CreateUserDto) {
-    const hashedPwd = await bcrypt.hash(createUserDto.password, 10);
-    return this.prisma.user.create({
-	data: {
-		email: createUserDto.email,
-		password: hashedPwd,
-	}	
-    });
+    try {
+      const hashedPwd = await bcrypt.hash(createUserDto.password, 10);
+      return this.prisma.user.create({
+	      data: {
+		      email: createUserDto.email,
+		      password: hashedPwd,
+          name: createUserDto.name,
+	      }	
+      });
+    } catch (err) {
+      console.error(err)
+      throw err
+    }
   }
 
   findAll() {
@@ -25,6 +31,12 @@ export class UsersService {
     return this.prisma.user.findUnique({
 		where: {id},
 	});
+  }
+
+  findByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: {email},
+    })
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
