@@ -13,9 +13,41 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  password String
-  name     String
-  createdAt DateTime @default(now())
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  password         String
+  name             String
+  createdAt        DateTime  @default(now())
+  role             String    @default("USER")
+  sentMessages     Message[] @relation("sent")
+  receivedMessages Message[] @relation("received")
+  friends          Friend[]  @relation("friend_user")
+  friendof         Friend[]  @relation("friend_friend")
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  content    String
+  senderId   Int
+  receiverId Int
+  sender     User     @relation("sent", fields: [senderId], references: [id])
+  receiver   User     @relation("received", fields: [receiverId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Friend {
+  id       Int          @id @default(autoincrement())
+  userId   Int
+  friendId Int
+  status   FriendStatus
+  user     User         @relation("friend_user", fields: [userId], references: [id])
+  friend   User         @relation("friend_friend", fields: [friendId], references: [id])
+
+  @@unique([userId, friendId])
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
 }
