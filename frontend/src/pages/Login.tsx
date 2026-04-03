@@ -11,10 +11,10 @@ function Login() {
 	const navigate = useNavigate()
 
 	async function handleSubmit(e: any) {
+		e.preventDefault()
 		setErrors([])
 		if (!userEmail || !userPwd) {
 			setErrors(["Please fill all fields."])
-			e.preventDefault()
 			return
 		}
 		const uEmail = sanitizeEmail(userEmail)

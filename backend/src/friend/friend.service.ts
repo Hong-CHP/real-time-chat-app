@@ -1,33 +1,47 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { CreateFriendDto } from './dto/create-friend.dto';
 import { UpdateFriendDto } from './dto/update-friend.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ChatGateway } from 'src/chat/chat.gateway';
 
 @Injectable()
 export class FriendService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly chatGateway: ChatGateway) {}
   async sendRequest(userId: number, createFriendDto: CreateFriendDto) {
+    Number(createFriendDto.friendId)
+    console.log(userId, createFriendDto.friendId)
     if (userId === createFriendDto.friendId)
       throw new BadRequestException("Cannot add yourself")
     const exist = await this.prisma.friend.findFirst({
       where: {
         OR: [
-          {userId, friendId: createFriendDto.friendId},
-          {userId: createFriendDto.friendId, friendId: userId},
+          {userId, friendId: createFriendDto.friendId, status: 'ACCEPTED'},
+          {userId: createFriendDto.friendId, friendId: userId, status: 'ACCEPTED'},
         ],
       },
     })
-    if (exist)
+    if (exist) {
+      console.log("error")
       throw new BadRequestException("Your are friends already.")
-    return (
-      this.prisma.friend.create({
+    }
+    try {
+      const request = await this.prisma.friend.create({
         data: {
           userId,
           friendId: createFriendDto.friendId,
           status: 'PENDING',
         }
       })
-    );
+      this.chatGateway.sendFriendRequest(createFriendDto.friendId, {
+        fromUserId: userId,
+      })
+      return request
+    } catch (e : any) {
+      if (e.code === "P2002")
+          throw new ConflictException("The request is already exist, please wait the response.")
+    }
   }
 
   async getRequests(userId: number) {

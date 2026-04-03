@@ -39,6 +39,22 @@ export class UsersService {
     })
   }
 
+  findMany(keyword: string) {
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          {name: {contains: keyword}},
+          {email: {contains: keyword}},
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      }
+    })
+  }
+
   async update(id: number, updateUserDto: UpdateUserDto) {
 	const data: any = {...updateUserDto};
 	if (updateUserDto.password) {

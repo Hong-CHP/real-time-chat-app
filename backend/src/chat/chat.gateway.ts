@@ -16,10 +16,10 @@ import { Server, Socket } from 'socket.io'
 export	class ChatGateway {
 	constructor(private jwtService: JwtService) {}
 
-	private users = new Map<number, string>()
-
 	@WebSocketServer()
 	server: Server
+
+	private users = new Map<number, string>()
 
 	handleConnection(client: Socket) {
 		try {
@@ -38,7 +38,19 @@ export	class ChatGateway {
 	}
 
 	handleDisconnect(client: Socket) {
+		for (const [userId, socketId] of this.users.entries()) {
+			if (socketId === client.id) {
+				this.users.delete(userId)
+				break
+			}
+		}
 		console.log('User disconnected:', client.id)
+	}
+
+	sendFriendRequest(targetId: number, data: any) {
+		const targetSocketId = this.users.get(targetId)
+		if (targetSocketId)
+			this.server.to(targetSocketId).emit('friend_request', data)
 	}
 
 	@SubscribeMessage('sendMessage')

@@ -3,7 +3,6 @@ import { FriendService } from './friend.service';
 import { CreateFriendDto } from './dto/create-friend.dto';
 import { UpdateFriendDto } from './dto/update-friend.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { OPTIONAL_PROPERTY_DEPS_METADATA } from '@nestjs/common/constants';
 
 @Controller('friend')
 @UseGuards(AuthGuard('jwt'))
