@@ -24,6 +24,11 @@ export class FriendController {
     return this.friendService.acceptRequest(req.user.id, Number(requestId), updateFriendDto)
   }
 
+  @Post('refuse/:id')
+  refuse(@Req() req, @Param('id') requestId: string) {
+    return this.friendService.refuseRequest(req.user.id, Number(requestId))
+  }
+
   @Get('list')
   getFriends(@Req() req) {
     return this.friendService.getFriends(req.user.id);
