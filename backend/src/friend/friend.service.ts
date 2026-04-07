@@ -9,6 +9,7 @@ export class FriendService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly chatGateway: ChatGateway) {}
+
   async sendRequest(userId: number, createFriendDto: CreateFriendDto) {
     Number(createFriendDto.friendId)
     console.log(userId, createFriendDto.friendId)
@@ -34,8 +35,14 @@ export class FriendService {
           status: 'PENDING',
         }
       })
+      const sender = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      })
       this.chatGateway.sendFriendRequest(createFriendDto.friendId, {
         fromUserId: userId,
+        fromName: sender?.name,  
+        status: 'PENDING',
       })
       return request
     } catch (e : any) {
@@ -76,6 +83,19 @@ export class FriendService {
         }
       })
     )
+  }
+
+  async refuseRequest(userId: number, requestId: number) {
+    const request = await this.prisma.friend.findFirst({
+      where: {
+        userId: requestId,
+        friendId: userId,
+        status: 'PENDING',
+      }
+    })
+    if (!request)
+      throw new BadRequestException("Request not found.")
+    return this.prisma.friend.delete({where: {id: request.id}})
   }
 
   async getFriends(userId: number) {

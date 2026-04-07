@@ -7,6 +7,7 @@ import {
 	ConnectedSocket
 } from '@nestjs/websockets'
 import { Server, Socket } from 'socket.io'
+import { PrismaService } from 'src/prisma/prisma.service'
 
 @WebSocketGateway({
 	cors: {
@@ -14,7 +15,9 @@ import { Server, Socket } from 'socket.io'
 	}
 })
 export	class ChatGateway {
-	constructor(private jwtService: JwtService) {}
+	constructor(
+		private jwtService: JwtService,
+		private readonly prisma : PrismaService) {}
 
 	@WebSocketServer()
 	server: Server
@@ -54,18 +57,20 @@ export	class ChatGateway {
 	}
 
 	@SubscribeMessage('sendMessage')
-	handleMessage(
+	async handleMessage(
 		@MessageBody() data: any,
 		@ConnectedSocket() client: Socket
 	) {
 		const {content, receiverId} = data
 		const senderId = client.data.userId
 		const receiverSocketId = this.users.get(receiverId)
-		const message = {
-			content,
-			receiverId,
-			senderId,
-		}
+		const message = await this.prisma.message.create({
+			data: {
+				content,
+				senderId,
+				receiverId,
+			}
+		})
 		if (receiverSocketId) {
 			this.server.to(receiverSocketId).emit("receiveMessage", message)
 		}
