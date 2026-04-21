@@ -8,6 +8,7 @@ import { AuthController } from './auth/auth.controller';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { FriendModule } from './friend/friend.module';
+import { RoomModule } from './room/room.module';
 
 @Module({
   imports: [
@@ -17,7 +18,9 @@ import { FriendModule } from './friend/friend.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }), 
-    ChatModule, FriendModule],
+    ChatModule, 
+    FriendModule,
+    RoomModule],
   controllers: [AppController, AuthController],
   providers: [AppService],
 })

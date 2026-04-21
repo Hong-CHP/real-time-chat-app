@@ -4,6 +4,7 @@ import { FriendController } from './friend.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { JwtStrategy } from 'src/auth/jwt.strategy';
 import { ChatModule } from 'src/chat/chat.module';
+import { RoomService } from 'src/room/room.service';
 
 @Module({
   imports: [PrismaModule, ChatModule],

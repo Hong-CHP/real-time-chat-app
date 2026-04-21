@@ -39,12 +39,19 @@ export class UsersService {
     })
   }
 
-  findMany(keyword: string) {
+  findMany(keyword: string, userId: number) {
     return this.prisma.user.findMany({
       where: {
-        OR: [
-          {name: {contains: keyword}},
-          {email: {contains: keyword}},
+        AND: [
+          {
+            id : { not: userId },
+          },
+          {
+            OR: [
+              {name: {contains: keyword}},
+              {email: {contains: keyword}},
+            ]
+          }
         ]
       },
       select: {

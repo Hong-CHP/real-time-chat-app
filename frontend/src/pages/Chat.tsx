@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
 import { jwtDecode } from 'jwt-decode'
 import { ChatStyle } from "../components/style/ChatStyle"
@@ -21,7 +21,7 @@ export function getUserId() {
 type Message = {
 	content: string;
 	senderId: string;
-	receiverId: string;
+	roomId: string;
 }
 
 type FriendStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'BLOCKED';
@@ -39,8 +39,8 @@ function Chat () {
 	const [messages, setMessages] = useState<Message[]>([])
 	const [message, setMessage] = useState<string>("")
 	const [friends, setFriends] = useState<any[]>([])
-	const [receiverId, setReceiverId] = useState(-1)
-	const [socket, setSocket] = useState<any>(null)
+	const [currentRoomId, setCurrentRoomId] = useState<number | null>(null)
+	const socketRef = useRef<any>(null)
 	const [openNotifications, setOpenNotifications] = useState(false)
 	const [notifications, setNotifications] = useState<Notification[]>([])
 	const [friendsVersion, setFriendsVersion] = useState(0)
@@ -51,8 +51,12 @@ function Chat () {
 	// socket for receiveMessages, receive friend_request
 	useEffect(()=>{
 		const newSocket = createSocket()
-		setSocket(newSocket)
+		socketRef.current = newSocket
 		
+		newSocket.on("connect", () => {
+   			console.log("connected:", newSocket.id)
+  		})
+
 		newSocket.on("receiveMessage", data=>{
 			setMessages(prev=>[...prev, data])
 		})
@@ -65,14 +69,42 @@ function Chat () {
 			newSocket.disconnect()
 		}
 	}, [])
+
+	async function handleEnterRoom(friendId: number) {
+		if (friendId === -1) return
+		const room = await fetch(`/api/rooms/private?friendId=${friendId}`, {
+			method: "GET",
+			headers : {
+				Authorization: `Bearer ${token}`
+			}
+		})
+		if (!room.ok)
+			throw new Error("Unauthorized token")
+
+		const roomData = await room.json()
+		const roomId = roomData.id
+		console.log(roomId)
+		setCurrentRoomId(roomData.id)
+
+		if (roomId === -1) return 
+		socketRef.current?.emit("join-room", {roomId})
+		const res = await fetch(`/api/messages?roomId=${roomId}`, {
+			method: 'GET',
+			headers : {Authorization: `Bearer ${token}`}
+		})
+		if (!res.ok)
+			throw new Error("Unauthorized token.")
+		const data = await res.json()
+		setMessages(data)
+	}
 	
 	// send a message
 	function handleSendMessage() {
-		if (!socket || receiverId === -1) return
+		if (!socketRef.current || currentRoomId === -1) return
 
-		socket.emit('sendMessage', {
+		socketRef.current.emit('sendMessage', {
 			content: message,
-			receiverId: receiverId,
+			roomId: currentRoomId,
 		})
 		setMessage("")
 	}
@@ -147,20 +179,6 @@ function Chat () {
 		setOpenNotifications(true)
 	}
 
-	async function handleInteractionWithFriend(friendId: number) {
-		if (friendId === -1) return 
-		setReceiverId(friendId)
-		const res = await fetch(`/api/messages?userId=${myId}&friendId=${friendId}`, {
-			method: 'GET',
-			headers : {Authorization: `Bearer ${token}`}
-		})
-		if (!res.ok)
-			throw new Error("Unauthorized token.")
-		const data = await res.json()
-		setMessages(data)
-	}
-
-
 	return(
 		<div>
 			<div>
@@ -189,7 +207,7 @@ function Chat () {
 					<h3>Friends</h3>
 					{friends.map((friend)=><div key={friend.id}>
 						<button
-							onClick={()=>handleInteractionWithFriend(friend.friend.id)}>
+							onClick={()=>handleEnterRoom(friend.friend.id)}>
 							{friend.friend.name}
 						</button>
 					</div>)}
@@ -227,10 +245,7 @@ function Notifications({notifications, setNotifications, setFriendsVersion} : No
 			headers: {
 				"Content-type": "application/json",
 				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify({
-				friendId: notif.fromUserId,
-			})
+			}
 		})
 		if (!res.ok)
 			throw new Error(`${res.status}: ${res.statusText}`)

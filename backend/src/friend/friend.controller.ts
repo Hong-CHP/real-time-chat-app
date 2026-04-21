@@ -20,8 +20,8 @@ export class FriendController {
   }
 
   @Post('accept/:id')
-  accept(@Req() req, @Param('id') requestId: string, @Body() updateFriendDto: UpdateFriendDto) {
-    return this.friendService.acceptRequest(req.user.id, Number(requestId), updateFriendDto)
+  accept(@Req() req, @Param('id') requestId: string) {
+    return this.friendService.acceptRequest(req.user.id, Number(requestId))
   }
 
   @Post('refuse/:id')
