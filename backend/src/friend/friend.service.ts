@@ -8,7 +8,7 @@ import { ChatGateway } from 'src/chat/chat.gateway';
 export class FriendService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly chatGateway: ChatGateway) {}
+    private readonly chatGateway: ChatGateway,) {}
 
   async sendRequest(userId: number, createFriendDto: CreateFriendDto) {
     Number(createFriendDto.friendId)
@@ -64,7 +64,7 @@ export class FriendService {
     return requests
   }
 
-  async acceptRequest(userId: number, requestId: number, updateFriendDto: UpdateFriendDto) {
+  async acceptRequest(userId: number, requestId: number) {
     const request = await this.prisma.friend.findFirst({
       where: {
         userId: requestId,
@@ -74,15 +74,34 @@ export class FriendService {
     })
     if (!request)
       throw new ForbiddenException("The request is not exist.")
-    const data = {...updateFriendDto}
-    return  (
-      this.prisma.friend.update({
-        where: {id: request.id}, 
-        data: {
-          status: 'ACCEPTED'
-        }
+
+    const key = [userId, requestId].sort().join('_')
+
+    const result = await this.prisma.$transaction(async(tx)=>{
+      const updated = await tx.friend.update({
+          where: { id: request.id }, 
+          data: {
+            status: 'ACCEPTED'
+          }
+        })
+      let room = await tx.room.upsert({
+        where: { uniqueKey : key },
+        create: {
+          name: `room_${userId}_${requestId}`,
+          type: 'PRIVATE',
+          uniqueKey: key,
+          members: {
+            create: [
+              { user: { connect: {id: userId}} },
+              { user: { connect: {id: requestId}} },
+            ]
+          }
+        },
+        update: {}
       })
-    )
+      return { updated, room }
+    })
+    return result
   }
 
   async refuseRequest(userId: number, requestId: number) {

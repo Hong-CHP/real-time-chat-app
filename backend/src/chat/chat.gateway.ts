@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import {
 	WebSocketGateway,
@@ -22,7 +23,7 @@ export	class ChatGateway {
 	@WebSocketServer()
 	server: Server
 
-	private users = new Map<number, string>()
+	private users = new Map<number, Set<string>>()
 
 	handleConnection(client: Socket) {
 		try {
@@ -34,15 +35,20 @@ export	class ChatGateway {
 			const payload = this.jwtService.verify(token)
 			const userId = payload.sub
 			client.data.userId = userId
-			this.users.set(userId, client.id)
+			let sockets = this.users.get(userId)
+			if (!sockets) {
+				sockets = new Set<string>()
+				this.users.set(userId, sockets)
+			}
+			sockets.add(client.id)
 		} catch (err: any) {
 			client.disconnect()
 		}
 	}
 
 	handleDisconnect(client: Socket) {
-		for (const [userId, socketId] of this.users.entries()) {
-			if (socketId === client.id) {
+		for (const [userId, sockets] of this.users.entries()) {
+			if (sockets.has(client.id)) {
 				this.users.delete(userId)
 				break
 			}
@@ -51,29 +57,48 @@ export	class ChatGateway {
 	}
 
 	sendFriendRequest(targetId: number, data: any) {
-		const targetSocketId = this.users.get(targetId)
-		if (targetSocketId)
-			this.server.to(targetSocketId).emit('friend_request', data)
+		const targetSockets = this.users.get(targetId)
+		if (targetSockets) {
+			targetSockets.forEach(socket => {
+				this.server.to(socket).emit('friend_request', data)
+			});
+		}
 	}
 
+	@SubscribeMessage('join-room')
+	async handleJoinRoom(
+		@MessageBody() data: { roomId: number },
+		@ConnectedSocket() client: Socket
+	) {
+		const room = `room_${data.roomId}`
+		client.join(room)
+	}
+	
 	@SubscribeMessage('sendMessage')
 	async handleMessage(
 		@MessageBody() data: any,
 		@ConnectedSocket() client: Socket
 	) {
-		const {content, receiverId} = data
+		const content = data.content
+		const roomId = Number(data.roomId)
+		if (!roomId || roomId === undefined)
+			throw new BadRequestException("Invalid roomId.")
 		const senderId = client.data.userId
-		const receiverSocketId = this.users.get(receiverId)
+		const existRoomId = await this.prisma.room.findUnique({
+			where: { id : roomId }
+		})
+		if (!existRoomId)
+			throw new BadRequestException("This room is not exist.")
 		const message = await this.prisma.message.create({
 			data: {
 				content,
 				senderId,
-				receiverId,
+				roomId,
 			}
 		})
-		if (receiverSocketId) {
-			this.server.to(receiverSocketId).emit("receiveMessage", message)
-		}
-		client.emit('receiveMessage', message)
+		console.log("message created:", message)
+		const room = `room_${data.roomId}`
+		console.log("room: ", room)
+		this.server.to(room).emit("receiveMessage", message)
 	}
 }

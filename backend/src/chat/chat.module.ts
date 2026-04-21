@@ -4,14 +4,13 @@ import { ChatGateway } from "./chat.gateway";
 import { PrismaModule } from "src/prisma/prisma.module";
 import { ChatService } from "./chat.service";
 import { ChatController } from "./chat.controller";
+import { AuthModule } from "src/auth/auth.module";
 
 @Module({
 	imports: [
-		JwtModule.register({
-        	secret: 'your-secret-key',
-        	signOptions: {expiresIn: '1h'}
-    	}),
-		PrismaModule],
+		AuthModule,
+		PrismaModule
+	],
 	controllers: [ChatController],
 	providers: [ChatGateway, ChatService],
 	exports: [ChatGateway]
