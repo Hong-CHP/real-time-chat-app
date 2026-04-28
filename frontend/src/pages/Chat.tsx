@@ -1,21 +1,17 @@
 import { useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
-import { jwtDecode } from 'jwt-decode'
 import { ChatStyle } from "../components/style/ChatStyle"
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
+import { apiFetch } from "../context/api"
 
-export function createSocket() {
+export function createSocket(token: string) {
 	return (
 		io('http://localhost:3000', {
 			auth: {
-				token: localStorage.getItem("access_token")
+				token,
 		}})
 	)
-}
-
-export function getUserId() {
-	const token = localStorage.getItem("access_token")
-	const decoded = jwtDecode(token!)
-	return decoded.sub
 }
 
 type Message = {
@@ -34,23 +30,25 @@ type Notification = {
 }
 
 function Chat () {
+	const socketRef = useRef<any>(null)
 	const [keyword, setKeyword] = useState<string>("")
 	const [searchResult, setSearchResult] = useState<any | null>(null)
 	const [messages, setMessages] = useState<Message[]>([])
 	const [message, setMessage] = useState<string>("")
 	const [friends, setFriends] = useState<any[]>([])
+	const [showFriendList, setShowFriendList] = useState(false)
 	const [currentRoomId, setCurrentRoomId] = useState<number | null>(null)
-	const socketRef = useRef<any>(null)
 	const [openNotifications, setOpenNotifications] = useState(false)
 	const [notifications, setNotifications] = useState<Notification[]>([])
 	const [friendsVersion, setFriendsVersion] = useState(0)
-	
-	const token = localStorage.getItem("access_token")
-	const myId = getUserId()
+	const [roomList, setRoomList] = useState<any[]>([])
+	const navigate = useNavigate()
+	const { token, userId, logout } = useAuth()
+	const myId = userId
 
 	// socket for receiveMessages, receive friend_request
 	useEffect(()=>{
-		const newSocket = createSocket()
+		const newSocket = createSocket(token!)
 		socketRef.current = newSocket
 		
 		newSocket.on("connect", () => {
@@ -68,27 +66,14 @@ function Chat () {
 		return ()=>{
 			newSocket.disconnect()
 		}
-	}, [])
+	}, [token])
 
-	async function handleEnterRoom(friendId: number) {
-		if (friendId === -1) return
-		const room = await fetch(`/api/rooms/private?friendId=${friendId}`, {
-			method: "GET",
-			headers : {
-				Authorization: `Bearer ${token}`
-			}
-		})
-		if (!room.ok)
-			throw new Error("Unauthorized token")
+	async function handleEnterRoom(roomId: number) {
+		if (!roomId || roomId === -1) return 
+		setCurrentRoomId(roomId)
 
-		const roomData = await room.json()
-		const roomId = roomData.id
-		console.log(roomId)
-		setCurrentRoomId(roomData.id)
-
-		if (roomId === -1) return 
 		socketRef.current?.emit("join-room", {roomId})
-		const res = await fetch(`/api/messages?roomId=${roomId}`, {
+		const res = await apiFetch(`/api/messages?roomId=${roomId}`, {
 			method: 'GET',
 			headers : {Authorization: `Bearer ${token}`}
 		})
@@ -96,6 +81,7 @@ function Chat () {
 			throw new Error("Unauthorized token.")
 		const data = await res.json()
 		setMessages(data)
+		
 	}
 	
 	// send a message
@@ -111,24 +97,38 @@ function Chat () {
 	
 	// get friends list
 	useEffect(()=>{
-		fetch('/api/friend/list', {
+		apiFetch('/api/friend/list', {
 			method: "GET",
-			headers: {
-				Authorization: `Bearer ${token}`
-			}
 		})
 		.then(res=>res.json())
-		.then(data=>setFriends(data))
+		.then(data=>{setFriends(data)})
 	}, [friendsVersion])
+
+	function handleShowFriendList() {
+		setShowFriendList(show=>!show)
+	}
+
+	// get room List
+	useEffect(()=>{
+		if (!token) return
+		const fetchRooms = async ()=>{
+			const res = await apiFetch("/api/rooms", {
+				method: "GET",
+			})
+			if (!res.ok)
+				throw new Error("Unauthorized token")
+			const data = await res.json()
+			setRoomList(data)
+			console.log(data)
+		}
+		fetchRooms()
+	}, [token])
 
 	// find someone in users
 	async function handleSearchRequest(e: any) {
 		e.preventDefault()
-		const res = await fetch(`/api/users/search?keyword=${keyword}`, {
+		const res = await apiFetch(`/api/users/search?keyword=${keyword}`, {
 			method: 'GET',
-			headers: {
-				Authorization: `Bearer ${token}`
-			}
 		})
 		if (!res.ok)
 			throw new Error("Unauthorized token")
@@ -138,11 +138,10 @@ function Chat () {
 
 	// sendRequest for adding a friend
 	async function handleAddFriend(friendId: number) {		
-		const res = await fetch('/api/friend/request', {
+		const res = await apiFetch('/api/friend/request', {
 				method: 'POST',
 				headers: {
 					"Content-type": "application/json",
-					Authorization: `Bearer ${token}`,
 				},
 				body: JSON.stringify({
 					friendId: friendId
@@ -159,11 +158,8 @@ function Chat () {
 	}
 
 	async function handleOpenNotifications() {
-		const res = await fetch('/api/friend/requests', {
+		const res = await apiFetch('/api/friend/requests', {
 			method:"GET",
-			headers: {
-				Authorization: `Bearer ${token}`,
-			}	
 		})
 		if (!res.ok)
 			throw new Error("Unauthorized token.")
@@ -176,46 +172,88 @@ function Chat () {
 				status: req.status,
 			})
 		))
-		setOpenNotifications(true)
+		setOpenNotifications(open=>!open)
+	}
+
+	async function handleLogout() {
+		try {
+			const res = await apiFetch("/api/auth/logout", {
+				method: "POST",
+			})
+			if (!res.ok)
+				throw new Error(`${res.status} : ${res.statusText}`)
+			// localStorage.removeItem("access_token");
+		} catch (err: any) {
+			console.error(err)
+		} finally {
+			logout()
+			navigate('/')
+		}
 	}
 
 	return(
 		<div>
 			<div>
+				<button onClick={handleLogout}>Logout</button>
 				<h2>Chat</h2>
-				<button onClick={handleOpenNotifications}>Notifications</button>
-				{openNotifications && <Notifications notifications={notifications} setNotifications={setNotifications} setFriendsVersion={setFriendsVersion} />}
+				<div style={{display: "flex", justifyContent: "flex-end", marginBottom: "10px"}}>
+					<button onClick={handleOpenNotifications}>Notifications</button>
+					{openNotifications && <Notifications notifications={notifications} setNotifications={setNotifications} setFriendsVersion={setFriendsVersion} />}
+				</div>
 			</div>
-			<form onSubmit={handleSearchRequest}>
+			<div style={{display: "flex", justifyContent: "space-between", marginBottom: "10px"}}>
 				<div>
-					<label htmlFor="search_one"></label>
-					<input type="text" id="search_one" name="search_one"
-						value={keyword} 
-						onChange={e=>setKeyword(e.target.value)}
-						placeholder="Search someone..."/>
-					<button>Search</button>
+					<form onSubmit={handleSearchRequest}>
+						<div>
+							<label htmlFor="search_one"></label>
+							<input type="text" id="search_one" name="search_one"
+								value={keyword} 
+								onChange={e=>setKeyword(e.target.value)}
+								placeholder="Search someone..."/>
+							<button>Search</button>
+						</div>
+					</form>
+					{searchResult?.map((target: any)=>
+						<div key={target.id}>
+							<p>{target.name}</p>
+							<button onClick={()=>handleAddFriend(target.id)}>Add friend</button>
+						</div>
+					)}
 				</div>
-			</form>
-			{searchResult?.map((target: any)=>
-				<div key={target.id}>
-					<p>{target.name}</p>
-					<button onClick={()=>handleAddFriend(target.id)}>Add friend</button>
+				<div style={{display: "flex", flexDirection: "column"}}>
+					<button onClick={handleShowFriendList}>Friends</button>
+					<div>
+					{showFriendList && 
+						friends.map((f, i)=>
+							<div key={i}>
+								<p>{f.friend.name}</p>
+							</div>
+					)}
+					</div>
 				</div>
-			)}
+			</div>
 			<ChatStyle>
 				<div className="left">
-					<h3>Friends</h3>
-					{friends.map((friend)=><div key={friend.id}>
-						<button
-							onClick={()=>handleEnterRoom(friend.friend.id)}>
-							{friend.friend.name}
-						</button>
-					</div>)}
+					<h3>Rooms</h3>
+					{roomList.map((room)=>{
+						const isPrivate = room.type === 'PRIVATE'
+						const otherMember = room.members.find(m=>m.userId !== Number(myId))
+						const names = isPrivate ? otherMember?.user.name : room.name
+						return(
+							<div key={room.id} style={{border: "1px solid", padding: "4px"}}>
+								<div style={{display: "flex", justifyContent: "space-between"}}>
+									<button onClick={()=>handleEnterRoom(room.id)}>{names}</button>	
+									<span>{room.unReadCount}</span>
+								</div>
+								<p style={{margin: "4px 0 0 4px"}}>{room.lastMessage}</p>
+							</div>
+						)
+					})}
 				</div>
 				<div className="right">
 					<div>
 						{messages.map((msg, i)=>{
-							const isMe = msg.senderId === getUserId()
+							const isMe = msg.senderId === userId
 							return (<p key={i}
 								style={{textAlign: isMe? "right" : "left"}}>
 								{msg.content}</p>)
@@ -240,11 +278,10 @@ function Notifications({notifications, setNotifications, setFriendsVersion} : No
 	const token = localStorage.getItem("access_token")
 
 	async function acceptFriend(notif: Notification) {
-		const res = await fetch(`/api/friend/accept/${notif.fromUserId}`, {
+		const res = await apiFetch(`/api/friend/accept/${notif.fromUserId}`, {
 			method: 'POST',
 			headers: {
 				"Content-type": "application/json",
-				Authorization: `Bearer ${token}`,
 			}
 		})
 		if (!res.ok)
@@ -254,9 +291,8 @@ function Notifications({notifications, setNotifications, setFriendsVersion} : No
 	}
 
 	async function refuseFriend(notif: Notification) {
-		const res = await fetch(`/api/friend/refuse/${notif.fromUserId}`, {
+		const res = await apiFetch(`/api/friend/refuse/${notif.fromUserId}`, {
 			method: 'POST',
-			headers: {Authorization: `Bearer ${token}`},
 		})
 		if (!res.ok)
 			throw new Error(`${res.status}: ${res.statusText}`)

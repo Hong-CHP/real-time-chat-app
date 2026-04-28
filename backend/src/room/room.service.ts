@@ -23,23 +23,43 @@ export class RoomService{
 		})
 	}
 
-	async findAll() {
-		return this.prisma.room.findMany({
+	async findAll(userId: number) {
+		const rooms = await this.prisma.room.findMany({
+			where: {
+				members: {
+					some: {userId : userId}
+				}
+			},
 			include: {
-				members: true,
+				members: {
+					include : {user: true}
+				},
 			}
 		})
-	}
-
-	async getPrivateRoom(userId: number, friendId: number) {
-		const key = [userId, friendId].sort().join('_')
-		const room = await this.prisma.room.findFirst({
-			where: {
-				uniqueKey: key,	
-			},
-		})
-		if (!room)
-			throw new Error("Room not found")
-		return room
+		return Promise.all(
+			rooms.map(async(room)=>{
+				const lastMessage = await this.prisma.message.findFirst({
+					where: {
+						roomId: room.id
+					},
+					orderBy: {id: 'desc'}
+				})
+				const member = room.members.find(m=>m.userId === userId)
+				const lastReadMessageId = member?.lastReadMessageId?? 0
+				const unReadCount = await this.prisma.message.count({
+					where: {
+						roomId : room.id,
+						id: { gt: lastReadMessageId}
+					}
+				})
+				return {
+					id: room.id,
+					name: room.name,
+					type: room.type,
+					members: room.members,
+					lastMessage: lastMessage?.content?? "",
+					unReadCount
+				}
+		}))
 	}
 }

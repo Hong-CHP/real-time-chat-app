@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @Injectable()
 export class UsersService {
@@ -23,19 +24,68 @@ export class UsersService {
     }
   }
 
-  findAll() {
-    return this.prisma.user.findMany();
+  findById(myId: number) {
+    return this.prisma.user.findUnique({
+      where: {id: myId},
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        friends: true,
+      }
+    })
+  }
+
+  async updateMe(myId: number, updateUserDto: UpdateUserDto) {
+    const {name, email, password} = updateUserDto
+    const data: any = {name, email}
+    if (password !== undefined)
+      data.password = await bcrypt.hash(password, 10)
+    const updated = await this.prisma.user.update({
+      where: {id: myId},
+      data,
+    })
+    const {password:_, ...me} = updated
+    return me
+  }
+
+  async removeMe(myId: number) {
+    return this.prisma.user.delete({
+      where: {id: myId}
+    })
+  }
+
+  async findAll() {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      }
+    });
+    return users
   }
 
   findOne(id: number) {
     return this.prisma.user.findUnique({
-		where: {id},
-	});
+		  where: {id},
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      }
+	  });
   }
 
   findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: {email},
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      }
     })
   }
 
@@ -62,18 +112,21 @@ export class UsersService {
     })
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
-	const data: any = {...updateUserDto};
-	if (updateUserDto.password) {
-		data.password = await bcrypt.hash(updateUserDto.password, 10)
-	}
-	return this.prisma.user.update({
-		where: {id},
-		data
-	});
+  async updateOne(id: number, updateUserDto: UpdateUserDto) {
+    const data: any = {...updateUserDto};
+    if (updateUserDto.password) {
+    	data.password = await bcrypt.hash(updateUserDto.password, 10)
+    }
+    const updatedUser = await this.prisma.user.update({
+    	where: {id},
+    	data
+    });
+
+    const {password:_, ...res} = updatedUser
+    return res
   }
 
-  remove(id: number) {
+  removeOne(id: number) {
     return this.prisma.user.delete({
 		where: {id},
 	});

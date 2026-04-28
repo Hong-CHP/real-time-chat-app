@@ -4,13 +4,16 @@ import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { UsersModule } from 'src/users/users.module';
 import { JwtStrategy } from './jwt.strategy';
+import { PrismaModule } from 'src/prisma/prisma.module';
 
 @Module({
-  imports: [UsersModule, 
+  imports: [
+    PrismaModule,
+    UsersModule, 
     JwtModule.register(
       {
-        secret: 'your-secret-key',
-        signOptions: {expiresIn: '1h'}
+        secret: process.env.JWT_SECRET,
+        signOptions: {expiresIn: '15m'}
       }
     )
   ],

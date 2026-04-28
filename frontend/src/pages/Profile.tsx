@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ErrorText } from "../components/style/LoginStyle"
+import { apiFetch } from "../context/api"
 
 function Profile() {
 	const navigate = useNavigate()
@@ -14,11 +15,8 @@ function Profile() {
 			return
 		}
 
-		fetch("/api/auth/profile", {
+		apiFetch("/api/auth/profile", {
 			method: "GET",
-			headers: {
-				Authorization: `Bearer ${token}`
-			}
 		}).then(async (res)=>{
 			if (!res.ok)
 				throw new Error("Unauthorized")

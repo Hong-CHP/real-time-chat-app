@@ -1,0 +1,59 @@
+• Findings
+
+  - Critical: WebSocket room authorization is missing. In src/chat/chat.gateway.ts:68, join-room never verifies that the
+    socket user belongs to the room before joining, and in src/chat/chat.gateway.ts:98, sendMessage only checks that the
+    room exists. Any authenticated user can send messages into rooms they do not belong to, and can join empty rooms
+    without error.
+  - High: User endpoint protection is structurally broken. In src/users/users.controller.ts:11,
+    UseGuards(AuthGuard('jwt'), RolesGuard) is missing the @, so it does nothing. The admin routes then use only
+    RolesGuard, but src/auth/jwt.strategy.ts:12 returns { email, id } without role, while src/common/guards/
+    roles.guard.ts:18 expects user.role. Result: admin authorization is unreliable and likely fails or crashes depending
+    on the request.
+  - High: GET /users/search and GET /users/me are likely shadowed by GET /users/:id. In src/users/
+    users.controller.ts:30, :id is declared before src/users/users.controller.ts:49 and src/users/
+    users.controller.ts:54. In practice, /users/search and /users/me can be routed to findOne() with NaN.
+  - High: The refresh-token flow is inconsistent. src/auth/auth.controller.ts:17 sets the refresh token in an httpOnly
+    cookie and returns only access_token, but src/auth/auth.controller.ts:32 expects body.refresh_token. A browser
+    client cannot read the cookie to send it back in the body, so refresh is effectively broken unless you ignore the
+    cookie design.
+  - High: DELETE /users/me is broken. src/users/users.controller.ts:64 passes the whole me object into removeMe(), but
+    src/users/users.service.ts:53 expects a numeric user id.
+  - Medium: Validation is not actually enforced. src/main.ts:4 does not register a global ValidationPipe, so DTO
+    decorators are inert. That matters immediately in src/friend/friend.service.ts:13, where
+    Number(createFriendDto.friendId) is called and discarded, meaning bad payloads can slip into service logic.
+  - Medium: Multi-socket presence tracking is wrong. In src/chat/chat.gateway.ts:49, disconnecting one socket deletes
+    the entire user entry instead of removing just that socket id. If a user has two tabs open, closing one tab makes
+    the server think the user is fully offline.
+  - Medium: Room listing has both correctness and performance issues. In src/room/room.service.ts:39, the service does
+    per-room queries for last message and unread count (N+1 pattern). Also the unread count query at src/room/
+    room.service.ts:49 counts the user’s own new messages as unread because it does not exclude senderId = userId.
+  - Medium: Tests are structurally broken by import strategy. npm test fails in 6 suites because files such as src/auth/
+    auth.service.ts:6, src/friend/friend.service.ts:4, and src/users/users.controller.ts:7 use src/... imports, but Jest
+    is not configured to resolve that alias.
+  - Low: Sensitive configuration is logged. src/prisma/prisma.service.ts:13 prints DATABASE_URL to stdout. That should
+    not happen in any non-local environment.
+
+  Modifications To Make
+
+  - Add membership checks in ChatGateway before join-room and sendMessage.
+  - Fix UsersController guards: add @UseGuards(AuthGuard('jwt'), RolesGuard) at controller or route level, and include
+    role in JWT validation or load the user from DB.
+  - Reorder users routes so search and me are declared before :id.
+  - Fix removeMe() call to pass me.id.
+  - Pick one refresh-token transport and implement it consistently:
+    either read from cookie server-side, or return/send it in the body and stop relying on httpOnly.
+  - Register ValidationPipe({ whitelist: true, transform: true }) globally, and add real validators to DTOs.
+  - Fix socket tracking so disconnect removes only client.id from the set, and deletes the map entry only when the set
+    becomes empty.
+  - Refactor RoomService.findAll() to fetch last message and unread metadata without per-room round trips.
+  - Standardize imports:
+    either switch to relative imports, or add Jest moduleNameMapper/TS path alias config.
+  - Remove console.log(process.env.DATABASE_URL) and any similar secret logging.
+
+  Verification
+
+  npm run build passes. npm test fails, mainly because Jest cannot resolve the src/... import style and some test
+  modules do not provide mocked Prisma dependencies.
+
+  If you want, I can do the fixes in priority order starting with auth/WebSocket authorization and the broken user
+  routes.

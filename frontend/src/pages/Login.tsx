@@ -3,10 +3,12 @@ import { InputBox, ErrorText } from '../components/style/LoginStyle'
 import { LoginStyle } from '../components/style/LoginStyle'
 import { useState } from 'react';
 import { sanitizeEmail, sanitizePassword } from '../function/userSanitize';
+import { useAuth } from '../context/AuthContext';
 
 function Login() {
 	const [userEmail, setUserEmail] = useState("")
 	const [userPwd, setUserPwd] = useState("")
+	const { login } = useAuth()
 	const [errors, setErrors] = useState<string[]>([])
 	const navigate = useNavigate()
 
@@ -23,6 +25,7 @@ function Login() {
 			const res = await fetch("/api/auth/login", {
 				method: "POST",
 				headers: {"Content-Type" : "application/json"},
+				credentials: "include",
 				body: JSON.stringify({
 					email: uEmail,
 					password: uPassword,
@@ -32,7 +35,8 @@ function Login() {
 				throw new Error(`${res.status}: ${res.statusText}`)
 			}
 			const data = await res.json()
-			localStorage.setItem("access_token", data.access_token)
+			login(data.access_token)
+			// localStorage.setItem("access_token", data.access_token)
 			setUserEmail("")
 			setUserPwd("")
 			navigate("/profile")

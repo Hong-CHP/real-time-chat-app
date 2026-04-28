@@ -70,8 +70,29 @@ export	class ChatGateway {
 		@MessageBody() data: { roomId: number },
 		@ConnectedSocket() client: Socket
 	) {
+		const lastMessage = await this.prisma.message.findFirst({
+			where: { roomId: data.roomId },
+			orderBy: { id: 'desc'}
+		})
+		if (lastMessage) {
+			await this.prisma.roomMember.update({
+				where: {
+					userId_roomId: {
+						userId: client.data.userId,
+						roomId: data.roomId
+					}
+				},
+				data: {
+					lastReadMessageId : lastMessage.id
+				}
+			})
+		}
 		const room = `room_${data.roomId}`
+		const currentRoom = client.data.currentRoom
+		if (currentRoom)
+			client.leave(currentRoom)
 		client.join(room)
+		client.data.currentRoom = room
 	}
 	
 	@SubscribeMessage('sendMessage')
@@ -96,9 +117,20 @@ export	class ChatGateway {
 				roomId,
 			}
 		})
-		console.log("message created:", message)
 		const room = `room_${data.roomId}`
-		console.log("room: ", room)
+		const socketInRoom = await this.server.in(room).fetchSockets()
+		const activeUserIdInRoom = [...new Set(socketInRoom.map(s=>s.data.userId))]
+		if (activeUserIdInRoom.length > 0) {
+			await this.prisma.roomMember.updateMany({
+				where: {
+						roomId: data.roomId,
+						userId: {in: activeUserIdInRoom},
+					},
+				data: {
+					lastReadMessageId: message.id
+				}
+			})
+		}
 		this.server.to(room).emit("receiveMessage", message)
 	}
 }
