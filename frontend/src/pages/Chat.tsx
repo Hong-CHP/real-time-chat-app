@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
 import { ChatStyle } from "../components/style/ChatStyle"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { apiFetch } from "../context/api"
 
@@ -46,13 +46,22 @@ function Chat () {
 	const { token, userId, logout } = useAuth()
 	const myId = userId
 
+	if (!token)
+		return <div>
+				<Link to='/login'>
+					<p>Please login first.</p>
+				</Link>
+			</div>
+
 	// socket for receiveMessages, receive friend_request
 	useEffect(()=>{
-		const newSocket = createSocket(token!)
+		if (!token)
+			return
+		const newSocket = createSocket(token)
 		socketRef.current = newSocket
 		
 		newSocket.on("connect", () => {
-   			console.log("connected:", newSocket.id)
+   			console.log("socket connected:", newSocket.id)
   		})
 
 		newSocket.on("receiveMessage", data=>{
@@ -63,25 +72,29 @@ function Chat () {
 			setNotifications(prev=>[...prev, data])
 		})
 
+		newSocket.on('exception', err=>{
+			console.error("Socket error: ", err)
+		})
+
 		return ()=>{
 			newSocket.disconnect()
 		}
 	}, [token])
 
 	async function handleEnterRoom(roomId: number) {
+		console.log("ENTER ROOM CALLED", roomId)
 		if (!roomId || roomId === -1) return 
 		setCurrentRoomId(roomId)
-
+		
 		socketRef.current?.emit("join-room", {roomId})
 		const res = await apiFetch(`/api/messages?roomId=${roomId}`, {
 			method: 'GET',
 			headers : {Authorization: `Bearer ${token}`}
 		})
 		if (!res.ok)
-			throw new Error("Unauthorized token.")
+			throw new Error(`${res.status}: ${res.statusText}`)
 		const data = await res.json()
 		setMessages(data)
-		
 	}
 	
 	// send a message
