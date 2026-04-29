@@ -21,7 +21,7 @@ export class AuthService {
 	}
 
 	async login(user : any) {
-		const payload = {email: user.email, sub: user.id}
+		const payload = {email: user.email, sub: user.id, role: user.role}
 		const access_token = this.jwtService.sign(payload, {expiresIn: '15m'})
 		const refresh_token = this.jwtService.sign(payload, {
 			secret: process.env.JWT_REFRESH_SECRET,
@@ -51,7 +51,7 @@ export class AuthService {
 				throw new UnauthorizedException("User not found.")
 			if (user && user.refresh_token != refresh_token)
 				throw new UnauthorizedException("Invalid refresh token.")
-			const new_generate = {email: user.email, sub: user.id}
+			const new_generate = {email: user.email, sub: user.id, role: user.role}
 			const new_access_token = this.jwtService.sign(new_generate, {expiresIn: '15m'})
 			return { access_token: new_access_token }
 		} catch (err: any) {

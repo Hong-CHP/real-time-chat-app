@@ -8,7 +8,7 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 
-UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(AuthGuard('jwt'))
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -19,28 +19,28 @@ export class UsersController {
   }
 
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('ADMIN')
   @Get()
   findAll() {
     return this.usersService.findAll();
   }
 
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('ADMIN')
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(+id);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('ADMIN')
   @Patch(':id')
   updateOne(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.updateOne(+id, updateUserDto);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('admin')
+  @Roles('ADMIN')
   @Delete(':id')
   removeOne(@Param('id') id: string) {
     return this.usersService.removeOne(+id);
