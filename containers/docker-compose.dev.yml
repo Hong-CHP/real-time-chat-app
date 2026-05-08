@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:18-alpine3.23
+    container_name: chat-db
+    restart: always
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: chat_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d chat_app"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  
+  backend:
+    build:
+      context:  ..
+      dockerfile: backend/Dockerfile
+    container_name: chat-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:123456@db:5432/chat_app
+      JWT_SECRET: this_is_an_secret_chat_app
+      JWT_REFRESH_SECRET: this_is_a_key_to_refresh_an_secret_chat_app_jwt_secret
+    volumes:
+      - ../backend:/app/backend
+      - ../.prettierrc:/app/.prettierrc:ro
+      - ../.prettierignore:/app/.prettierignore:ro
+      - backend_node_modules:/app/backend/node_modules
+      - backend_generated:/app/backend/generated
+    command: sh -c "npx prisma generate && npx prisma migrate dev && npm run start:dev"
+    
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    container_name: chat-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://backend:3000
+    volumes:
+      - ../frontend:/app/frontend
+      - ../.prettierrc:/app/.prettierrc:ro
+      - ../.prettierignore:/app/.prettierignore:ro
+      - frontend_node_modules:/app/frontend/node_modules
+
+volumes:
+  db-data:
+  backend_node_modules:
+  frontend_node_modules:
+  backend_generated:
