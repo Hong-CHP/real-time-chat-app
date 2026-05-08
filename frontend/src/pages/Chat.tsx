@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { io } from "socket.io-client"
 import { ChatStyle } from "../components/style/ChatStyle"
-import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { apiFetch } from "../context/api"
 
@@ -250,7 +250,7 @@ function Chat () {
 					<h3>Rooms</h3>
 					{roomList.map((room)=>{
 						const isPrivate = room.type === 'PRIVATE'
-						const otherMember = room.members.find(m=>m.userId !== Number(myId))
+						const otherMember = room.members.filter((m : any )=>m.user.id !== Number(myId))
 						const names = isPrivate ? otherMember?.user.name : room.name
 						return(
 							<div key={room.id} style={{border: "1px solid", padding: "4px"}}>
@@ -288,8 +288,6 @@ type NotificationsProps = {
 }
 
 function Notifications({notifications, setNotifications, setFriendsVersion} : NotificationsProps) {
-	const token = localStorage.getItem("access_token")
-
 	async function acceptFriend(notif: Notification) {
 		const res = await apiFetch(`/api/friend/accept/${notif.fromUserId}`, {
 			method: 'POST',
