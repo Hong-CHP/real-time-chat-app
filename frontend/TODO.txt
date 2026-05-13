@@ -1,178 +1,85 @@
-  结论：
-  没有一个插件能直接帮你完成完整个人媒体 blog，但用 react-photo-album + lightbox + react-player，你只需要写很少的框
-  架。 这比自己写 blog 前端快很多，也比接 Strapi/Ghost 简单。
+  1. Blog functionality
+     You do not have blog models in backend/prisma/schema.prisma:15. There are only User, Room, Message, and Friend.
 
+     Add:
+      - Post model.
+      - Comment model if readers can comment.
+      - Optional Tag / Category.
+      - Optional Like / reaction model.
+      - Backend CRUD routes for posts.
+      - Frontend pages: blog home, post detail, create/edit post.
+  2. Real home/blog page
+     Your home page is only a login link in frontend/src/pages/Home.tsx:3.
 
-› 那你教我怎么操作吧，不要改我代码。
+     You probably need:
+      - Blog post list.
+      - About section.
+      - Navigation to blog/chat/profile.
+      - Public view for visitors.
+  3. Post editor
+     Missing completely.
 
-To continue this session, run codex resume 019e1b90-3add-77f0-8969-55bbdc5e031e
-• 可以。你现在先不要改 backend，只在 frontend 做一个本地媒体页面。
+     You need a page where you can:
+      - Create a blog post.
+      - Edit a blog post.
+      - Delete a blog post.
+      - Save title, content, image, created date, author.
+  4. Profile features
+     Backend supports GET /users/me, PATCH /users/me, and DELETE /users/me in backend/src/users/
+  users.controller.ts:35, but the frontend profile page only displays email and id in frontend/src/pages/
+  Profile.tsx:37.
 
-  1. 安装库
-  进入 frontend 目录：
+     Add:
+      - Edit username/email/password UI.
+      - Delete account UI.
+      - Show username, not only email/id.
+  5. Group chat UI
+     Backend has room creation in backend/src/room/room.controller.ts:23, but I don’t see frontend UI to create group
+  rooms.
 
-  cd frontend
-  npm install react-photo-album yet-another-react-lightbox react-player
+     Add:
+      - Create group chat.
+      - Add selected friends to group.
+      - Show group members.
+  6. Friend management
+     You can send, accept, refuse, list, and block friends. But frontend is missing:
+      - Cancel sent friend request.
+      - Remove friend.
+      - Block/unblock UI.
+      - Show pending sent requests.
+      - Better feedback after sending request.
+  7. Chat polish
+     Current chat works, but you still need:
+      - Prevent sending empty messages.
+      - Auto-scroll to latest message.
+      - Show sender name/time.
+      - Better error display instead of alert.
+      - Refresh room list after new messages.
+      - Show online/offline users.
+      - Maybe typing indicator.
+  8. Validation and security
+     DTO validation is very light. For example CreateUserDto has no validators.
 
-  2. 建本地媒体目录
-  在 frontend/public 下面建：
+     Add:
+      - @IsEmail, @IsString, @MinLength, etc.
+      - Message length validation.
+      - Post title/content validation.
+      - Production-safe cookie settings.
+      - More restricted WebSocket CORS. Right now it uses origin: '*' in backend/src/chat/chat.gateway.ts:18.
+  9. Tests
+     You have some spec files, but the main app flows need real tests:
+      - Register/login.
+      - Create/read/update/delete blog post.
+      - Send friend request.
+      - Accept friend request creates private room.
+      - Send/get messages.
 
-  public/media/photos
-  public/media/videos
-  public/media/covers
+  Recommended order
 
-  放文件时路径会这样用：
-
-  /media/photos/photo1.jpg
-  /media/videos/video1.mp4
-  /media/covers/cover1.jpg
-
-  3. 建内容数据文件
-  新建：
-
-  frontend/src/content/media.ts
-
-  内容示例：
-
-  export const mediaPosts = [
-    {
-      id: "first-gallery",
-      type: "gallery",
-      title: "First Gallery",
-      description: "Some photos from my life.",
-      date: "2026-05-12",
-      cover: "/media/covers/cover1.jpg",
-      images: [
-        {
-          src: "/media/photos/photo1.jpg",
-          width: 1200,
-          height: 800,
-        },
-        {
-          src: "/media/photos/photo2.jpg",
-          width: 1000,
-          height: 1000,
-        },
-      ],
-    },
-    {
-      id: "first-video",
-      type: "video",
-      title: "First Video",
-      description: "A short video.",
-      date: "2026-05-12",
-      cover: "/media/covers/video-cover.jpg",
-      videoUrl: "/media/videos/video1.mp4",
-    },
-  ] as const;
-
-  注意：react-photo-album 需要图片的 width 和 height。
-
-  4. 建 Media 页面
-  新建：
-
-  frontend/src/pages/Media.tsx
-
-  大概结构：
-
-  import { useState } from "react";
-  import PhotoAlbum from "react-photo-album";
-  import Lightbox from "yet-another-react-lightbox";
-  import ReactPlayer from "react-player";
-  import "yet-another-react-lightbox/styles.css";
-  import { mediaPosts } from "../content/media";
-
-  function Media() {
-    const [index, setIndex] = useState(-1);
-
-    const photos = mediaPosts
-      .filter((post) => post.type === "gallery")
-      .flatMap((post) => post.images);
-
-    return (
-      <div>
-        <h2>Media</h2>
-
-        <section>
-          <h3>Photos</h3>
-          <PhotoAlbum
-            layout="masonry"
-            photos={photos}
-            onClick={({ index }) => setIndex(index)}
-          />
-
-          <Lightbox
-            open={index >= 0}
-            close={() => setIndex(-1)}
-            index={index}
-            slides={photos}
-          />
-        </section>
-
-        <section>
-          <h3>Videos</h3>
-          {mediaPosts
-            .filter((post) => post.type === "video")
-            .map((post) => (
-              <div key={post.id}>
-                <h4>{post.title}</h4>
-                <p>{post.description}</p>
-                <ReactPlayer
-                  src={post.videoUrl}
-                  controls
-                  width="100%"
-                  height="360px"
-                />
-              </div>
-      </div>
-    );
-  }
-
-  export default Media;
-
-  5. 加路由
-  在 frontend/src/routes.tsx 里 import：
-
-  import Media from './pages/Media';
-
-  然后 children 里加：
-
-  { path: 'media', element: <Media /> },
-
-  之后访问：
-
-  http://localhost:5173/media
-
-  6. 首页加入口
-  你可以在 Home.tsx 或导航里加：
-
-  <Link to="/media">Media</Link>
-
-  7. 以后怎么添加内容
-  以后你只需要：
-
-  1. 把图片放到 public/media/photos
-  2. 把视频放到 public/media/videos
-  3. 把封面放到 public/media/covers
-  4. 在 media.ts 里加一项
-
-  比如加新视频：
-
-  {
-    id: "second-video",
-    type: "video",
-    title: "Second Video",
-    description: "Another clip.",
-    date: "2026-05-12",
-    cover: "/media/covers/second-cover.jpg",
-    videoUrl: "/media/videos/second.mp4",
-  }
-
-  我建议你的第一步
-  先只做：
-
-  Media 页面
-  Photo gallery
-  Video list
-
-  不要一开始做分类、标签、搜索。等能显示内容以后，再慢慢加。
+  1. Build blog database models.
+  2. Add blog backend routes/services.
+  3. Build blog pages on frontend.
+  4. Improve profile page.
+  5. Add group chat creation UI.
+  6. Polish chat/friend UX.
+  7. Add validation and tests.
