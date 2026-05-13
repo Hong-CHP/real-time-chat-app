@@ -7,53 +7,52 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @Injectable()
 export class UsersService {
-  constructor (private prisma: PrismaService) {};
+  constructor(private prisma: PrismaService) {}
   async create(createUserDto: CreateUserDto) {
     try {
       const hashedPwd = await bcrypt.hash(createUserDto.password, 10);
       return this.prisma.user.create({
-	      data: {
-		      email: createUserDto.email,
-		      password: hashedPwd,
+        data: {
+          email: createUserDto.email,
+          password: hashedPwd,
           name: createUserDto.name,
-	      }	
+        },
       });
     } catch (err) {
-      console.error(err)
-      throw err
+      console.error(err);
+      throw err;
     }
   }
 
   findById(myId: number) {
     return this.prisma.user.findUnique({
-      where: {id: myId},
+      where: { id: myId },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
         friends: true,
-      }
-    })
+      },
+    });
   }
 
   async updateMe(myId: number, updateUserDto: UpdateUserDto) {
-    const {name, email, password} = updateUserDto
-    const data: any = {name, email}
-    if (password !== undefined)
-      data.password = await bcrypt.hash(password, 10)
+    const { name, email, password } = updateUserDto;
+    const data: any = { name, email };
+    if (password !== undefined) data.password = await bcrypt.hash(password, 10);
     const updated = await this.prisma.user.update({
-      where: {id: myId},
+      where: { id: myId },
       data,
-    })
-    const {password:_, ...me} = updated
-    return me
+    });
+    const { password: _, ...me } = updated;
+    return me;
   }
 
   async removeMe(myId: number) {
     return this.prisma.user.delete({
-      where: {id: myId}
-    })
+      where: { id: myId },
+    });
   }
 
   async findAll() {
@@ -62,31 +61,31 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
-      }
+      },
     });
-    return users
+    return users;
   }
 
   findOne(id: number) {
     return this.prisma.user.findUnique({
-		  where: {id},
+      where: { id },
       select: {
         id: true,
         name: true,
         email: true,
-      }
-	  });
+      },
+    });
   }
 
   findByEmail(email: string) {
     return this.prisma.user.findUnique({
-      where: {email},
+      where: { email },
       select: {
         id: true,
         name: true,
         email: true,
-      }
-    })
+      },
+    });
   }
 
   findMany(keyword: string, userId: number) {
@@ -94,41 +93,41 @@ export class UsersService {
       where: {
         AND: [
           {
-            id : { not: userId },
+            id: { not: userId },
           },
           {
             OR: [
-              {name: {contains: keyword}},
-              {email: {contains: keyword}},
-            ]
-          }
-        ]
+              { name: { contains: keyword } },
+              { email: { contains: keyword } },
+            ],
+          },
+        ],
       },
       select: {
         id: true,
         name: true,
         email: true,
-      }
-    })
+      },
+    });
   }
 
   async updateOne(id: number, updateUserDto: UpdateUserDto) {
-    const data: any = {...updateUserDto};
+    const data: any = { ...updateUserDto };
     if (updateUserDto.password) {
-    	data.password = await bcrypt.hash(updateUserDto.password, 10)
+      data.password = await bcrypt.hash(updateUserDto.password, 10);
     }
     const updatedUser = await this.prisma.user.update({
-    	where: {id},
-    	data
+      where: { id },
+      data,
     });
 
-    const {password:_, ...res} = updatedUser
-    return res
+    const { password: _, ...res } = updatedUser;
+    return res;
   }
 
   removeOne(id: number) {
     return this.prisma.user.delete({
-		where: {id},
-	});
+      where: { id },
+    });
   }
 }

@@ -16,7 +16,7 @@ export function createSocket(token: string) {
 
 type Message = {
 	content: string;
-	senderId: string;
+	senderId: number;
 	roomId: string;
 }
 
@@ -45,13 +45,6 @@ function Chat () {
 	const navigate = useNavigate()
 	const { token, userId, logout } = useAuth()
 	const myId = userId
-
-	if (!token)
-		return <div>
-				<Link to='/login'>
-					<p>Please login first.</p>
-				</Link>
-			</div>
 
 	// socket for receiveMessages, receive friend_request
 	useEffect(()=>{
@@ -82,7 +75,6 @@ function Chat () {
 	}, [token])
 
 	async function handleEnterRoom(roomId: number) {
-		console.log("ENTER ROOM CALLED", roomId)
 		if (!roomId || roomId === -1) return 
 		setCurrentRoomId(roomId)
 		
@@ -94,13 +86,14 @@ function Chat () {
 		if (!res.ok)
 			throw new Error(`${res.status}: ${res.statusText}`)
 		const data = await res.json()
+		console.log(data)
 		setMessages(data)
 	}
 	
 	// send a message
 	function handleSendMessage() {
-		if (!socketRef.current || currentRoomId === -1) return
-
+		if (!socketRef.current || !currentRoomId) return
+		if (currentRoomId === -1) return
 		socketRef.current.emit('sendMessage', {
 			content: message,
 			roomId: currentRoomId,
@@ -110,12 +103,13 @@ function Chat () {
 	
 	// get friends list
 	useEffect(()=>{
+		if (!token) return
 		apiFetch('/api/friend/list', {
 			method: "GET",
 		})
 		.then(res=>res.json())
 		.then(data=>{setFriends(data)})
-	}, [friendsVersion])
+	}, [token, friendsVersion])
 
 	function handleShowFriendList() {
 		setShowFriendList(show=>!show)
@@ -131,8 +125,10 @@ function Chat () {
 			if (!res.ok)
 				throw new Error("Unauthorized token")
 			const data = await res.json()
+			// console.log("here is room data:", data[0].members[1].user.name)
 			setRoomList(data)
-			console.log(data)
+			if (!data)
+				throw new Error("You dont have any chat rooms.")
 		}
 		fetchRooms()
 	}, [token])
@@ -204,6 +200,14 @@ function Chat () {
 		}
 	}
 
+	if (!token) {
+		return <div>
+				<Link to='/login'>
+					<p>Please login first.</p>
+				</Link>
+			</div>
+	}
+
 	return(
 		<div>
 			<div>
@@ -250,7 +254,7 @@ function Chat () {
 					<h3>Rooms</h3>
 					{roomList.map((room)=>{
 						const isPrivate = room.type === 'PRIVATE'
-						const otherMember = room.members.filter((m : any )=>m.user.id !== Number(myId))
+						const otherMember = room.members.find((m : any )=>m.user.id !== Number(myId))
 						const names = isPrivate ? otherMember?.user.name : room.name
 						return(
 							<div key={room.id} style={{border: "1px solid", padding: "4px"}}>

@@ -5,11 +5,9 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [
-    JwtModule,
-    PrismaModule],
+  imports: [JwtModule, PrismaModule],
   controllers: [UsersController],
   providers: [UsersService],
-  exports: [UsersService]
+  exports: [UsersService],
 })
 export class UsersModule {}

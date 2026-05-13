@@ -1,4 +1,5 @@
 import Home from './pages/Home';
+import Media from './pages/Media';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
@@ -12,6 +13,7 @@ const routes = [
 		element: <Layout />,
 		children: [
 			{ index: true, element: <Home />},
+			{ path: 'media', element: <Media />},
 			{ path: 'register', element: <Register />},
 			{ path: 'login', element: <Login />},
 			{ path: 'chat', element: <Chat />},

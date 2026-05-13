@@ -1,16 +1,13 @@
-import { Module } from "@nestjs/common";
-import { RoomController } from "./room.controller";
-import { RoomService } from "./room.service";
-import { PrismaModule } from "src/prisma/prisma.module";
-import { JwtModule } from "@nestjs/jwt";
+import { Module } from '@nestjs/common';
+import { RoomController } from './room.controller';
+import { RoomService } from './room.service';
+import { PrismaModule } from 'src/prisma/prisma.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-	imports: [
-		JwtModule,
-		PrismaModule
-	],
-	controllers: [RoomController],
-	providers: [RoomService],
-	exports: [RoomService],
+  imports: [JwtModule, PrismaModule],
+  controllers: [RoomController],
+  providers: [RoomService],
+  exports: [RoomService],
 })
-export class RoomModule{}
+export class RoomModule {}

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { FriendService } from './friend.service';
 import { CreateFriendDto } from './dto/create-friend.dto';
 import { UpdateFriendDto } from './dto/update-friend.dto';
@@ -21,12 +31,12 @@ export class FriendController {
 
   @Post('accept/:id')
   accept(@Req() req, @Param('id') requestId: string) {
-    return this.friendService.acceptRequest(req.user.id, Number(requestId))
+    return this.friendService.acceptRequest(req.user.id, Number(requestId));
   }
 
   @Post('refuse/:id')
   refuse(@Req() req, @Param('id') requestId: string) {
-    return this.friendService.refuseRequest(req.user.id, Number(requestId))
+    return this.friendService.refuseRequest(req.user.id, Number(requestId));
   }
 
   @Get('list')
@@ -35,7 +45,15 @@ export class FriendController {
   }
 
   @Delete(':id')
-  blockFriend(@Req() req, @Param('id') blockId: string, @Body() updateFriendDto: UpdateFriendDto) {
-    return this.friendService.blockFriend(req.user.id, Number(blockId), updateFriendDto);
+  blockFriend(
+    @Req() req,
+    @Param('id') blockId: string,
+    @Body() updateFriendDto: UpdateFriendDto,
+  ) {
+    return this.friendService.blockFriend(
+      req.user.id,
+      Number(blockId),
+      updateFriendDto,
+    );
   }
 }

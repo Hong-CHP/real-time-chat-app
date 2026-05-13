@@ -1,4 +1,4 @@
-import { createParamDecorator, ExecutionContext } from "@nestjs/common";
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 /** 
  * ctx（ExecutionContext）
@@ -10,8 +10,8 @@ import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 	RPC（微服务）
 */
 export const CurrentUser = createParamDecorator(
-	(data: unknown, ctx: ExecutionContext)=>{
-		const request = ctx.switchToHttp().getRequest();
-		return request.user;
-	}
-)
+  (data: unknown, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest();
+    return request.user;
+  },
+);

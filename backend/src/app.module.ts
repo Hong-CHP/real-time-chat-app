@@ -3,7 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { ConfigModule } from '@nestjs/config'
+import { ConfigModule } from '@nestjs/config';
 import { AuthController } from './auth/auth.controller';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
@@ -12,15 +12,16 @@ import { RoomModule } from './room/room.module';
 
 @Module({
   imports: [
-    UsersModule, 
-    PrismaModule, 
+    UsersModule,
+    PrismaModule,
     AuthModule,
     ConfigModule.forRoot({
       isGlobal: true,
-    }), 
-    ChatModule, 
+    }),
+    ChatModule,
     FriendModule,
-    RoomModule],
+    RoomModule,
+  ],
   controllers: [AppController, AuthController],
   providers: [AppService],
 })
