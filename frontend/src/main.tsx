@@ -1,4 +1,4 @@
-import { createRoot, hydrateRoot } from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import routes from './routes'
 import { AuthProvider } from "./context/AuthContext"
@@ -12,7 +12,4 @@ const app = (
   </AuthProvider>
 )
 
-if (import.meta.env.PROD)
-  hydrateRoot(rootEle, app)
-else
-  createRoot(rootEle).render(app)
+createRoot(rootEle).render(app)

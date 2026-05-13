@@ -24,27 +24,31 @@ describe('UsersService', () => {
         {
           provide: PrismaService,
           useValue: mockPrisma,
-        }
+        },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
   });
   it('should create user', async () => {
-  mockPrisma.user.create.mockResolvedValue({ id: 1 });
+    mockPrisma.user.create.mockResolvedValue({ id: 1 });
 
-  const result = await service.create({ email: 'a', password: 'b' });
+    const result = await service.create({
+      email: 'a',
+      password: 'b',
+      name: 'test',
+    });
 
-  expect(result).toEqual({ id: 1 });
-});
+    expect(result).toEqual({ id: 1 });
+  });
 
-it('should find user by id', async () => {
-  mockPrisma.user.findUnique.mockResolvedValue({ id: 1 });
+  it('should find user by id', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 1 });
 
-  const result = await service.findOne(1);
+    const result = await service.findOne(1);
 
-  expect(result).toEqual({ id: 1 });
-});
+    expect(result).toEqual({ id: 1 });
+  });
 
   it('should be defined', () => {
     expect(service).toBeDefined();

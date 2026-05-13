@@ -3,11 +3,11 @@ import { CreateFriendDto } from './create-friend.dto';
 import { IsEnum } from 'class-validator';
 
 export enum FriendStatus {
-	PENDING = 'PENDING',
-	ACCEPTED ='ACCEPTED',
-	BLOCKED = 'BLOCKED',
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  BLOCKED = 'BLOCKED',
 }
 export class UpdateFriendDto extends PartialType(CreateFriendDto) {
-	@IsEnum(FriendStatus)
-	status: FriendStatus
+  @IsEnum(FriendStatus)
+  status: FriendStatus;
 }
