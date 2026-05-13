@@ -8,6 +8,8 @@ backend/dist/
 .env
 backend/.env
 
+frontend/TODO.txt
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
